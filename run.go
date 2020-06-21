@@ -2,15 +2,17 @@ package hargo
 
 import (
 	"bufio"
+	"compress/gzip"
 	"crypto/tls"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/cookiejar"
 	"time"
 )
 
 // Run executes all entries in .har file
-func Run(r *bufio.Reader, ignoreHarCookies bool, insecureSkipVerify bool) error {
+func Run(r *bufio.Reader, hc HarConfig, ignoreHarCookies bool, insecureSkipVerify bool, responseLines int) error {
 
 	har, err := Decode(r)
 
@@ -48,7 +50,7 @@ func Run(r *bufio.Reader, ignoreHarCookies bool, insecureSkipVerify bool) error 
 		}
 		first = st
 
-		req, err := EntryToRequest(&entry, ignoreHarCookies)
+		req, err := EntryToRequest(&entry, hc, ignoreHarCookies)
 
 		if err != nil {
 			return err
@@ -65,6 +67,21 @@ func Run(r *bufio.Reader, ignoreHarCookies bool, insecureSkipVerify bool) error 
 		fmt.Printf("[%s,%v] URL: %s\n", entry.Request.Method, resp.StatusCode, entry.Request.URL)
 
 		if resp != nil {
+			if responseLines > 0 || responseLines == -1 {
+				fmt.Println("Reponse:")
+				var reader io.ReadCloser
+				switch resp.Header.Get("Content-Encoding") {
+				case "gzip":
+					reader, err = gzip.NewReader(resp.Body)
+					defer reader.Close()
+				default:
+					reader = resp.Body
+				}
+				sc := bufio.NewScanner(reader)
+				for i := 0; (responseLines == -1 || i < responseLines) && sc.Scan(); i++ {
+					fmt.Println(sc.Text())
+				}
+			}
 			resp.Body.Close()
 		}
 

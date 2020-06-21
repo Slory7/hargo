@@ -330,10 +330,24 @@ type PageTimings struct {
 // TestResult contains results for an individual HTTP request
 type TestResult struct {
 	URL       string    `json:"url"`
+	URLShort  string    `json:"urlshort"`
 	Status    int       `json:"status"` // 200, 500, etc.
 	StartTime time.Time `json:"startTime"`
 	EndTime   time.Time `json:"endTime"`
 	Latency   int       `json:"latency"` // milliseconds
 	Method    string    `json:"method"`
+	Size      int64     `json:"size"`
 	HarFile   string    `json:"harfile"`
 }
+
+// HarConfig config
+type HarConfig struct {
+	Variables map[string]string `json:"variables"`
+	Alias     map[string]string `json:"alias"`
+}
+
+// // AliasConfig config
+// type AliasConfig struct {
+// 	From string `json:"from"`
+// 	To   string `json:"to"`
+// }

@@ -15,7 +15,7 @@ import (
 
 // LoadTest executes all HTTP requests in order concurrently
 // for a given number of workers.
-func LoadTest(harfile string, file *os.File, workers int, timeout time.Duration, u url.URL, ignoreHarCookies bool, insecureSkipVerify bool) error {
+func LoadTest(harfile string, file *os.File, hc HarConfig, isSequence bool, workers int, timeout time.Duration, u url.URL, ignoreHarCookies bool, insecureSkipVerify bool) error {
 	log.Infof("Starting load test with %d workers. Duration %v.", workers, timeout)
 
 	results := make(chan TestResult)
@@ -23,7 +23,7 @@ func LoadTest(harfile string, file *os.File, workers int, timeout time.Duration,
 	stop := make(chan bool)
 	entries := make(chan Entry, workers)
 
-	go ReadStream(file, entries, stop)
+	go ReadStream(file, entries, stop, isSequence)
 
 	// if a InfluxDB URL is given the metrics will be written to that instance
 	// if not the dummy consumer is initiated.
@@ -39,15 +39,35 @@ func LoadTest(harfile string, file *os.File, workers int, timeout time.Duration,
 
 	go wait(stop, timeout, workers)
 
-	for i := 0; i < workers; i++ {
-		go processEntries(harfile, i, entries, results, ignoreHarCookies, insecureSkipVerify, stop)
-	}
-
-	for {
-		select {
-		case <-stop:
+	if isSequence {
+		for i := 0; i < workers; i++ {
+			go processEntries(harfile, hc, i, entries, results, ignoreHarCookies, insecureSkipVerify, stop)
 		}
-		break
+		<-stop
+	} else {
+	loop:
+		for {
+			select {
+			case entry := <-entries:
+				for i := 0; i < workers; i++ {
+					ch := make(chan Entry)
+					go func(en Entry) {
+					loop:
+						for {
+							select {
+							default:
+								ch <- en
+							case <-stop:
+								break loop
+							}
+						}
+					}(entry)
+					go processEntries(harfile, hc, i, ch, results, ignoreHarCookies, insecureSkipVerify, stop)
+				}
+			case <-stop:
+				break loop
+			}
+		}
 	}
 	fmt.Printf("\nTimeout of %.1fs elapsed. Terminating load test.\n", timeout.Seconds())
 	return nil
@@ -59,7 +79,7 @@ func wait(stop chan bool, timeout time.Duration, workers int) {
 	close(stop)
 }
 
-func processEntries(harfile string, worker int, entries chan Entry, results chan TestResult, ignoreHarCookies bool, insecureSkipVerify bool, stop chan bool) {
+func processEntries(harfile string, hc HarConfig, worker int, entries chan Entry, results chan TestResult, ignoreHarCookies bool, insecureSkipVerify bool, stop chan bool) {
 	jar, _ := cookiejar.New(nil)
 
 	httpClient := http.Client{
@@ -80,15 +100,15 @@ func processEntries(harfile string, worker int, entries chan Entry, results chan
 		Jar: jar,
 	}
 	iter := 0
+loop:
 	for {
-
 		select {
 		case <-stop:
-			break
+			break loop
 		case entry := <-entries:
 			msg := fmt.Sprintf("[%d,%d] %s", worker, iter, entry.Request.URL)
 
-			req, err := EntryToRequest(&entry, ignoreHarCookies)
+			req, err := EntryToRequest(&entry, hc, ignoreHarCookies)
 
 			check(err)
 
@@ -106,6 +126,7 @@ func processEntries(harfile string, worker int, entries chan Entry, results chan
 				log.Error(entry)
 				tr := TestResult{
 					URL:       req.URL.String(),
+					URLShort:  hc.ReplaceAlias(req.URL.RequestURI()),
 					Status:    0,
 					StartTime: startTime,
 					EndTime:   endTime,
@@ -126,12 +147,15 @@ func processEntries(harfile string, worker int, entries chan Entry, results chan
 
 			tr := TestResult{
 				URL:       req.URL.String(),
+				URLShort:  hc.ReplaceAlias(req.URL.RequestURI()),
 				Status:    resp.StatusCode,
 				StartTime: startTime,
 				EndTime:   endTime,
 				Latency:   latency,
 				Method:    method,
-				HarFile:   harfile}
+				Size:      int64(entry.Request.BodySize + entry.Response.BodySize),
+				HarFile:   harfile,
+			}
 
 			results <- tr
 		}

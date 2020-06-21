@@ -5,8 +5,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -43,15 +46,15 @@ func Decode(r *bufio.Reader) (Har, error) {
 }
 
 // EntryToRequest converts a HAR entry type to an http.Request
-func EntryToRequest(entry *Entry, ignoreHarCookies bool) (*http.Request, error) {
+func EntryToRequest(entry *Entry, hc HarConfig, ignoreHarCookies bool) (*http.Request, error) {
 	body := ""
 
 	if len(entry.Request.PostData.Params) == 0 {
-		body = entry.Request.PostData.Text
+		body = hc.ReplaceVariables(entry.Request.PostData.Text)
 	} else {
 		form := url.Values{}
 		for _, p := range entry.Request.PostData.Params {
-			form.Add(p.Name, p.Value)
+			form.Add(p.Name, hc.ReplaceVariables(p.Value))
 		}
 		body = form.Encode()
 	}
@@ -60,13 +63,13 @@ func EntryToRequest(entry *Entry, ignoreHarCookies bool) (*http.Request, error) 
 
 	for _, h := range entry.Request.Headers {
 		if httpguts.ValidHeaderFieldName(h.Name) && httpguts.ValidHeaderFieldValue(h.Value) && h.Name != "Cookie" {
-			req.Header.Add(h.Name, h.Value)
+			req.Header.Add(h.Name, hc.ReplaceVariables(h.Value))
 		}
 	}
 
 	if !ignoreHarCookies {
 		for _, c := range entry.Request.Cookies {
-			cookie := &http.Cookie{Name: c.Name, Value: c.Value, HttpOnly: false, Domain: c.Domain}
+			cookie := &http.Cookie{Name: c.Name, Value: hc.ReplaceVariables(c.Value), HttpOnly: false, Domain: c.Domain}
 			req.AddCookie(cookie)
 		}
 	}
@@ -96,4 +99,51 @@ func NewReader(r io.Reader) *bufio.Reader {
 		buf.Discard(3)
 	}
 	return buf
+}
+
+//GetHarConfig gets the har config
+func GetHarConfig(harFile string) HarConfig {
+	hc := HarConfig{}
+	harConfigFile := strings.TrimRight(harFile, ".har") + ".json"
+	if _, err := os.Stat(harConfigFile); err == nil {
+		log.Info("with har config file: ", harConfigFile)
+		bytes, _ := ioutil.ReadFile(harConfigFile)
+		json.Unmarshal(bytes, &hc)
+	}
+	return hc
+}
+
+// ReplaceVariables is to replace config variables
+func (h *HarConfig) ReplaceVariables(s string) string {
+	if len(h.Variables) <= 0 {
+		re := regexp.MustCompile(`\{(\w+)\}`)
+		if re.MatchString(s) {
+			for _, g := range re.FindAllStringSubmatch(s, -1) {
+				if v, ok := h.Variables[g[1]]; ok {
+					s = strings.Replace(s, g[0], v, -1)
+				}
+			}
+		}
+	}
+	return s
+}
+
+// ReplaceAlias is to replace config alias
+func (h *HarConfig) ReplaceAlias(s string) string {
+	if len(h.Alias) > 0 {
+		if val, ok := h.Alias[s]; ok {
+			return val
+		}
+		for k, v := range h.Alias {
+			//this is a regexp
+			if k[0] == '(' {
+				if re, err := regexp.Compile(k); err == nil && re.MatchString(s) {
+					s2 := re.ReplaceAllString(s, v)
+					h.Alias[s] = s2
+					return s2
+				}
+			}
+		}
+	}
+	return s
 }

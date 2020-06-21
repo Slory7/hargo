@@ -2,6 +2,7 @@ package hargo
 
 import (
 	"bufio"
+	"compress/gzip"
 	"fmt"
 	"io"
 	"net/http"
@@ -16,7 +17,7 @@ import (
 )
 
 // Fetch downloads all resources references in .har file
-func Fetch(r *bufio.Reader) error {
+func Fetch(r *bufio.Reader, hc HarConfig) error {
 	har, err := Decode(r)
 
 	check(err)
@@ -38,12 +39,12 @@ func Fetch(r *bufio.Reader) error {
 
 		for _, h := range entry.Request.Headers {
 			if !strings.HasPrefix(h.Name, ":") {
-				req.Header.Add(h.Name, h.Value)
+				req.Header.Add(h.Name, hc.ReplaceVariables(h.Value))
 			}
 		}
 
 		for _, c := range entry.Request.Cookies {
-			cookie := &http.Cookie{Name: c.Name, Value: c.Value, HttpOnly: false, Domain: c.Domain}
+			cookie := &http.Cookie{Name: c.Name, Value: hc.ReplaceVariables(c.Value), HttpOnly: false, Domain: c.Domain}
 			req.AddCookie(cookie)
 		}
 
@@ -106,7 +107,15 @@ func downloadFile(req *http.Request, outdir string) error {
 	}
 	defer resp.Body.Close()
 
-	size, err := io.Copy(file, resp.Body)
+	var reader io.ReadCloser
+	switch resp.Header.Get("Content-Encoding") {
+	case "gzip":
+		reader, err = gzip.NewReader(resp.Body)
+		defer reader.Close()
+	default:
+		reader = resp.Body
+	}
+	size, err := io.Copy(file, reader)
 
 	if err != nil {
 		log.Error(err)

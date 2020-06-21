@@ -64,11 +64,13 @@ func main() {
 			ArgsUsage:   "<.har file> <output dir>",
 			Action: func(c *cli.Context) {
 				harFile := c.Args().First()
+				harFile, _ = filepath.Abs(harFile)
 				log.Infof("fetch .har file: %s", harFile)
 				file, err := os.Open(harFile)
 				if err == nil {
 					r := hargo.NewReader(file)
-					hargo.Fetch(r)
+					hc := hargo.GetHarConfig(harFile)
+					hargo.Fetch(r, hc)
 				} else {
 					log.Fatal("Cannot open file: ", harFile)
 					os.Exit(-1)
@@ -84,6 +86,7 @@ func main() {
 			ArgsUsage:   "<.har file>",
 			Action: func(c *cli.Context) {
 				harFile := c.Args().First()
+				harFile, _ = filepath.Abs(harFile)
 				log.Infof("curl .har file: %s", harFile)
 				file, err := os.Open(harFile)
 				if err == nil {
@@ -115,16 +118,23 @@ func main() {
 				cli.BoolFlag{
 					Name:  "insecure-skip-verify",
 					Usage: "Skips the TLS security checks"},
+				cli.IntFlag{
+					Name:  "v",
+					Value: 0,
+					Usage: "Verbose reponse content lines"},
 			},
 			Action: func(c *cli.Context) {
 				ignoreHarCookies := c.Bool("ignore-har-cookies")
 				insecureSkipVerify := c.Bool("insecure-skip-verify")
+				responseLines := c.Int("v")
 				harFile := c.Args().First()
+				harFile, _ = filepath.Abs(harFile)
 				log.Info("run .har file: ", harFile)
 				file, err := os.Open(harFile)
 				if err == nil {
 					r := hargo.NewReader(file)
-					hargo.Run(r, ignoreHarCookies, insecureSkipVerify)
+					hc := hargo.GetHarConfig(harFile)
+					hargo.Run(r, hc, ignoreHarCookies, insecureSkipVerify, responseLines)
 				} else {
 					log.Fatal("Cannot open file: ", harFile)
 					os.Exit(-1)
@@ -140,6 +150,7 @@ func main() {
 			ArgsUsage:   "<.har file>",
 			Action: func(c *cli.Context) {
 				harFile := c.Args().First()
+				harFile, _ = filepath.Abs(harFile)
 				log.Info("validate .har file: ", harFile)
 				file, err := os.Open(harFile)
 				if err == nil {
@@ -160,11 +171,13 @@ func main() {
 			ArgsUsage:   "<.har file>",
 			Action: func(c *cli.Context) {
 				harFile := c.Args().First()
+				harFile, _ = filepath.Abs(harFile)
 				log.Info("dump .har file: ", harFile)
 				file, err := os.Open(harFile)
 				if err == nil {
 					r := hargo.NewReader(file)
-					hargo.Dump(r)
+					hc := hargo.GetHarConfig(harFile)
+					hargo.Dump(r, hc)
 				} else {
 					log.Fatal("Cannot open file: ", harFile)
 					os.Exit(-1)
@@ -175,8 +188,8 @@ func main() {
 			Name:        "load",
 			Aliases:     []string{"l"},
 			Usage:       "Load test .har file",
-			UsageText:   "load - runs all requests in sequence, concurrently",
-			Description: "runs all requests in sequence, concurrently",
+			UsageText:   "load - runs all requests in sequence or not(-b), concurrently",
+			Description: "runs all requests in sequence or not(-b), concurrently",
 			ArgsUsage:   "<.har file>",
 			Flags: []cli.Flag{
 				cli.IntFlag{
@@ -187,6 +200,9 @@ func main() {
 					Name:  "duration, d",
 					Value: 60,
 					Usage: "Test duration in seconds (default 60)"},
+				cli.BoolFlag{
+					Name:  "benchmark, b",
+					Usage: "Benchmark mode, no sequence"},
 				cli.StringFlag{
 					Name:  "influxurl, u",
 					Usage: "InfluxDB URL"},
@@ -210,12 +226,13 @@ func main() {
 					log.Fatal("Must supply a .har file")
 					os.Exit(-1)
 				}
-
+				harFile, _ = filepath.Abs(harFile)
 				log.Info("load test .har file: ", harFile)
 				file, err := os.Open(harFile)
 				if err == nil {
 					workers := c.Int("w")
 					duration := c.Int("d")
+					benchmark := c.Bool("b")
 					u, err := url.Parse(c.String("u"))
 					ignoreHarCookies := c.Bool("ignore-har-cookies")
 					insecureSkipVerify := c.Bool("insecure-skip-verify")
@@ -224,8 +241,8 @@ func main() {
 						log.Fatal("Invalid InfluxDB URL: ", c.String("u"))
 						os.Exit(-1)
 					}
-
-					hargo.LoadTest(filepath.Base(harFile), file, workers, time.Duration(duration)*time.Second, *u, ignoreHarCookies, insecureSkipVerify)
+					hc := hargo.GetHarConfig(harFile)
+					hargo.LoadTest(filepath.Base(harFile), file, hc, !benchmark, workers, time.Duration(duration)*time.Second, *u, ignoreHarCookies, insecureSkipVerify)
 				} else {
 					log.Fatal("Cannot open file: ", harFile)
 					os.Exit(-1)

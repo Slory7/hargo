@@ -10,7 +10,7 @@ ARG HASH
 ARG DATE
 
 ENV GO111MODULE=on
-ENV GOPROXY=https://proxy.golang.org
+ENV GOPROXY=https://goproxy.io
 RUN go mod download
 
 ENV CGO_ENABLED=0

@@ -1,12 +1,38 @@
 {
   "version": "0.2.0",
-  "configurations": [{
-    "name": "Debug test file",
-    "type": "go",
-    "request": "launch",
-    "mode": "debug",
-    "program": "${workspaceFolder}/cmd/hargo/hargo.go",
-    "env": {},
-    "args": ["--", "f", "${workspaceFolder}/test/en.wikipedia.org.har"]
-  }]
+  "configurations": [
+    // {
+    //   "name": "Debug test file",
+    //   "type": "go",
+    //   "request": "launch",
+    //   "mode": "debug",
+    //   "program": "${workspaceFolder}/cmd/hargo/hargo.go",
+    //   "env": {},
+    //   "args": [
+    //     "--",
+    //     "f",
+    //     "${workspaceFolder}/test/en.wikipedia.org.har"
+    //   ]
+    // },
+    {
+      "name": "Debug run file",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "program": "${workspaceFolder}/cmd/hargo/hargo.go",
+      "env": {},
+      "args": [
+        "--",
+        "l",
+        "-b",
+        "-w",
+        "1",
+        "-d",
+        "1",
+        // "-u",
+        // "http://localhost:8086/hargo",
+        "${workspaceFolder}/test/richengke.com.har"
+      ]
+    }
+  ]
 }

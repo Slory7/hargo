@@ -10,7 +10,7 @@ import (
 )
 
 // Dump prints all HTTP requests in .har file
-func Dump(r *bufio.Reader) {
+func Dump(r *bufio.Reader, hc HarConfig) {
 	//_, err := Validate(r)
 
 	dec := json.NewDecoder(r)
@@ -36,19 +36,19 @@ func Dump(r *bufio.Reader) {
 		fmt.Println("Request Headers:")
 
 		for _, req := range entry.Request.Headers {
-			fmt.Println("\t" + req.Name + ": " + req.Value)
+			fmt.Println("\t" + req.Name + ": " + hc.ReplaceVariables(req.Value))
 		}
 
 		fmt.Println("Querystring Parameters:")
 
 		for _, qs := range entry.Request.QueryString {
-			fmt.Println("\t" + qs.Name + ": " + qs.Value)
+			fmt.Println("\t" + qs.Name + ": " + hc.ReplaceVariables(qs.Value))
 		}
 
 		fmt.Println("Cookies:")
 
 		for _, cookie := range entry.Request.Cookies {
-			fmt.Println("\t🍪 " + cookie.Name + "=" + cookie.Value)
+			fmt.Println("\t🍪 " + cookie.Name + "=" + hc.ReplaceVariables(cookie.Value))
 		}
 
 		fmt.Println("POST Data:")
@@ -56,13 +56,13 @@ func Dump(r *bufio.Reader) {
 		fmt.Println("\tMIME Type: " + entry.Request.PostData.MimeType)
 
 		for _, params := range entry.Request.PostData.Params {
-			fmt.Println("\t" + params.Name + ": " + params.Value)
+			fmt.Println("\t" + params.Name + ": " + hc.ReplaceVariables(params.Value))
 		}
 
 		fmt.Println("Response Headers:")
 
 		for _, res := range entry.Response.Headers {
-			fmt.Println("\t" + res.Name + ": " + res.Value)
+			fmt.Println("\t" + res.Name + ": " + hc.ReplaceVariables(res.Value))
 		}
 
 	}

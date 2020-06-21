@@ -65,15 +65,17 @@ func WritePoint(u url.URL, results chan TestResult) {
 	} else {
 		log.Info("Recording results to InfluxDB: ", u.String())
 	}
-
 	for {
 		result := <-results
 
 		bp, err := client.NewBatchPoints(client.BatchPointsConfig{
 			Database:  db,
-			Precision: "us",
+			Precision: "ms",
 		})
 
+		tags := map[string]string{
+			"URLShort": result.URLShort,
+		}
 		fields := map[string]interface{}{
 			"URL":       result.URL,
 			"Status":    result.Status,
@@ -81,9 +83,11 @@ func WritePoint(u url.URL, results chan TestResult) {
 			"EndTime":   result.EndTime,
 			"Latency":   result.Latency,
 			"Method":    result.Method,
-			"HarFile":   result.HarFile}
+			"Size":      result.Size,
+			"HarFile":   result.HarFile,
+		}
 
-		pt, err := client.NewPoint("test_result", nil, fields, time.Now())
+		pt, err := client.NewPoint("test_result", tags, fields, time.Now())
 
 		if err != nil {
 			log.Fatalln("Error: ", err)

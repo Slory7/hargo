@@ -1,0 +1,89 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build",
+            "type": "process",
+            "command": "go",
+            "args": [
+                "build",
+                "${workspaceFolder}/cmd/hargo/hargo.go",
+            ],
+            "group": {
+                "isDefault": true,
+                "kind": "build"
+            },
+            "problemMatcher": [
+                "$go"
+            ]
+        },
+        {
+            "label": "Hargo Load",
+            "type": "process",
+            "command": "go",
+            "args": [
+                "run",
+                "${workspaceFolder}/cmd/hargo/hargo.go",
+                "--",
+                "l",
+                "-d",
+                "30",
+                "-u",
+                "http://localhost:8086/hargo",
+                "${workspaceFolder}/test/richengke.com.har"
+            ],
+            "problemMatcher": [
+                "$go"
+            ]
+        },
+        {
+            "label": "Hargo Run",
+            "type": "process",
+            "command": "go",
+            "args": [
+                "run",
+                "${workspaceFolder}/cmd/hargo/hargo.go",
+                "--",
+                "r",
+                // "-v",
+                // "5",
+                "${workspaceFolder}/test/rck.har"
+            ],
+            "problemMatcher": [
+                "$go"
+            ]
+        },
+        {
+            "label": "Hargo Dump",
+            "type": "process",
+            "command": "go",
+            "args": [
+                "run",
+                "${workspaceFolder}/cmd/hargo/hargo.go",
+                "--",
+                "d",
+                "${workspaceFolder}/test/en.wikipedia.org.har"
+            ],
+            "problemMatcher": [
+                "$go"
+            ]
+        },
+        {
+            "label": "Hargo Fetch",
+            "type": "process",
+            "command": "go",
+            "args": [
+                "run",
+                "${workspaceFolder}/cmd/hargo/hargo.go",
+                "--",
+                "f",
+                "${workspaceFolder}/test/richengke.com.har"
+            ],
+            "problemMatcher": [
+                "$go"
+            ]
+        },
+    ]
+}

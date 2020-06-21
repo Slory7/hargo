@@ -12,7 +12,7 @@ import (
 // on a chan for consumption. When the end of a file is reached it
 // will start over until the stop signal is given.
 // https://golang.org/pkg/encoding/json/#example_Decoder_Decode_stream
-func ReadStream(file *os.File, entries chan Entry, stop chan bool) {
+func ReadStream(file *os.File, entries chan Entry, stop chan bool, loop bool) {
 	for {
 		r := NewReader(file)
 
@@ -61,6 +61,11 @@ func ReadStream(file *os.File, entries chan Entry, stop chan bool) {
 			}
 		}
 		log.Infoln("read HAR file")
-		file.Seek(0, io.SeekStart)
+		if loop {
+			file.Seek(0, io.SeekStart)
+		} else {
+			//close(entries)
+			return
+		}
 	}
 }

@@ -1,0 +1,13 @@
+{
+    "variables": {
+        "token": "12345678786533",
+        "time": "2020-06-10"
+    },
+    "alias": {
+        "(\\/runtime\\.(\\w+)\\.js)": "runtimejs.$2",
+        "(\\/main.\\w+\\.js)": "mainjs",
+        "(\\/scripts.\\w+\\.js)": "scriptsjs",
+        "(\\/styles\\.\\w+\\.css)": "stylescss",
+        "(\\/polyfills.(\\w+)\\.js)": "polyfillsjs"
+    }
+}
