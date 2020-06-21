@@ -153,7 +153,7 @@ loop:
 				EndTime:   endTime,
 				Latency:   latency,
 				Method:    method,
-				Size:      int64(entry.Request.BodySize + entry.Response.BodySize),
+				Size:      int64(entry.Request.HeaderSize + entry.Request.BodySize + entry.Response.HeadersSize + entry.Response.BodySize),
 				HarFile:   harfile,
 			}
 

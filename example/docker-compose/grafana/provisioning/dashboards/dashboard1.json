@@ -16,7 +16,7 @@
   "gnetId": null,
   "graphTooltip": 0,
   "id": 1,
-  "iteration": 1592700454582,
+  "iteration": 1592714102891,
   "links": [],
   "panels": [
     {
@@ -535,6 +535,43 @@
               "value": "200"
             }
           ]
+        },
+        {
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "orderByTime": "ASC",
+          "policy": "default",
+          "query": "select max(Rate)  from (SELECT sum(Size)/1024 as \"Rate\" FROM \"autogen\".\"test_result\" WHERE (\"Status\" < 400) AND (\"URLShort\" =~ /^$filterValue$/)  AND $timeFilter group by time(1s))",
+          "rawQuery": true,
+          "refId": "B",
+          "resultFormat": "table",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              }
+            ]
+          ],
+          "tags": []
         }
       ],
       "timeFrom": null,
@@ -543,7 +580,7 @@
       "type": "stat"
     }
   ],
-  "refresh": false,
+  "refresh": "5s",
   "schemaVersion": 25,
   "style": "dark",
   "tags": [],
@@ -629,5 +666,5 @@
   "timezone": "",
   "title": "Hargo Home",
   "uid": "TwTP3SzGz",
-  "version": 24
+  "version": 29
 }
